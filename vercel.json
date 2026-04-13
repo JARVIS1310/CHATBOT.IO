@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "installCommand": "npm install && npm --prefix project install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "project/dist",
+  "devCommand": "npm run dev",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
