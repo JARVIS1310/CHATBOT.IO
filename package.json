@@ -1,0 +1,12 @@
+{
+  "name": "chatbot-new-root",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "npm --prefix project start",
+    "dev": "npm --prefix project start",
+    "build": "npm --prefix project run build",
+    "lint": "npm --prefix project run lint"
+  }
+}
