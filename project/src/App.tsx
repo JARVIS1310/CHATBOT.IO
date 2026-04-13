@@ -102,12 +102,35 @@ function App() {
         body: JSON.stringify({ message: content, history }),
       });
 
+      // Check if response is ok
       if (!response.ok) {
-        const errorPayload = (await response.json()) as { error?: string };
-        throw new Error(errorPayload.error || 'Server error while generating response.');
+        let errorMsg = 'Server error while generating response.';
+        try {
+          const errorPayload = await response.json();
+          errorMsg = errorPayload.error || errorMsg;
+        } catch (e) {
+          // If we can't parse error response, use generic message
+          errorMsg = `Server returned ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMsg);
       }
 
-      const payload = (await response.json()) as ChatApiResponse;
+      // Get response text first to check if it's empty
+      const responseText = await response.text();
+      if (!responseText) {
+        throw new Error('Server returned empty response');
+      }
+
+      let payload: ChatApiResponse;
+      try {
+        payload = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error(`Invalid JSON response from server: ${responseText.substring(0, 100)}`);
+      }
+
+      if (!payload.reply) {
+        throw new Error('Server response missing required fields');
+      }
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),

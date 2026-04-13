@@ -233,36 +233,75 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.setHeader('Content-Type', 'application/json');
 
+  // Handle preflight
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
+  // Only accept POST
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { message, history } = req.body ?? {};
+    // Log incoming request for debugging
+    console.log('Incoming request body:', req.body);
+    console.log('Body type:', typeof req.body);
 
-    if (!message || typeof message !== 'string' || !message.trim()) {
-      res.status(400).json({ error: 'Message is required.' });
-      return;
+    let body = req.body;
+
+    // Handle string body (if body is a string, parse it)
+    if (typeof body === 'string') {
+      console.log('Body is string, parsing...');
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        console.error('JSON parse error:', e);
+        return res.status(400).json({ error: 'Invalid JSON in request body' });
+      }
     }
 
-    const topic = detectTopic(message);
-    const payload = topic === 'general'
-      ? await buildGeneralReply(message)
-      : buildReply(message, history);
+    const { message, history } = body || {};
 
-    res.status(200).json({
+    console.log('Message:', message);
+    console.log('History length:', history?.length);
+
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required.' });
+    }
+
+    console.log('Detecting topic for:', message);
+    const topic = detectTopic(message);
+    console.log('Topic detected:', topic);
+
+    let payload;
+    if (topic === 'general') {
+      console.log('Building general reply...');
+      payload = await buildGeneralReply(message);
+    } else {
+      console.log('Building topic reply...');
+      payload = buildReply(message, history);
+    }
+
+    console.log('Payload created:', !!payload?.reply);
+
+    const response = {
       ...payload,
       fallback: true,
-    });
+    };
+
+    console.log('Sending response...');
+    return res.status(200).json(response);
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ error: 'Failed to generate response' });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ 
+      error: 'Failed to generate response', 
+      details: errorMessage,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
